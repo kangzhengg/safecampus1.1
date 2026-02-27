@@ -217,7 +217,7 @@ const ScanScreen = () => {
     setIsAnalyzing(true);
     try {
       // Increment total scans
-      fetch("/api/stats/increment", {
+      await fetch("/api/stats/increment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "scan" })
@@ -225,7 +225,7 @@ const ScanScreen = () => {
 
       // Increment links checked if in link mode
       if (activeMode === "link") {
-        fetch("/api/stats/increment", {
+        await fetch("/api/stats/increment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ type: "link" })
@@ -237,14 +237,14 @@ const ScanScreen = () => {
 
       // If High Risk or Critical, increment detected and save to database
       if (analysis.risk_level === "High Risk" || analysis.risk_level === "Critical") {
-        fetch("/api/stats/increment", {
+        await fetch("/api/stats/increment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ type: "detected" })
         });
 
         // Save to database
-        fetch("/api/reports", {
+        await fetch("/api/reports", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

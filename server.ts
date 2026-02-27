@@ -30,74 +30,73 @@ const store = {
   ]
 };
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
+app.use(express.json());
 
-  app.use(express.json());
+// API Routes
+app.get("/api/reports", (req, res) => {
+  res.json([...store.reports].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+});
 
-  // API Routes
-  app.get("/api/reports", (req, res) => {
-    res.json([...store.reports].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+app.post("/api/reports", (req, res) => {
+  const { title, content, type, risk_level } = req.body;
+  const newReport = {
+    id: store.reports.length + 1,
+    title,
+    content,
+    type,
+    risk_level,
+    reports_count: 1,
+    created_at: new Date().toISOString()
+  };
+  store.reports.push(newReport);
+  res.json({ id: newReport.id });
+});
+
+app.get("/api/alerts", (req, res) => {
+  res.json([...store.alerts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+});
+
+app.get("/api/stats", (req, res) => {
+  res.json({ 
+    totalScans: store.stats.total_scans, 
+    detected: store.stats.detected, 
+    linksChecked: store.stats.links_checked, 
+    reportsCount: store.reports.length 
   });
+});
 
-  app.post("/api/reports", (req, res) => {
-    const { title, content, type, risk_level } = req.body;
-    const newReport = {
-      id: store.reports.length + 1,
-      title,
-      content,
-      type,
-      risk_level,
-      reports_count: 1,
-      created_at: new Date().toISOString()
-    };
-    store.reports.push(newReport);
-    res.json({ id: newReport.id });
-  });
-
-  app.get("/api/alerts", (req, res) => {
-    res.json([...store.alerts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-  });
-
-  app.get("/api/stats", (req, res) => {
-    res.json({ 
-      totalScans: store.stats.total_scans, 
-      detected: store.stats.detected, 
-      linksChecked: store.stats.links_checked, 
-      reportsCount: store.reports.length 
-    });
-  });
-
-  app.post("/api/stats/increment", (req, res) => {
-    const { type } = req.body;
-    if (type === "scan") {
-      store.stats.total_scans++;
-    } else if (type === "detected") {
-      store.stats.detected++;
-    } else if (type === "link") {
-      store.stats.links_checked++;
-    }
-    res.json({ success: true });
-  });
-
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    app.use(express.static(path.join(__dirname, "dist")));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
-    });
+app.post("/api/stats/increment", (req, res) => {
+  const { type } = req.body;
+  if (type === "scan") {
+    store.stats.total_scans++;
+  } else if (type === "detected") {
+    store.stats.detected++;
+  } else if (type === "link") {
+    store.stats.links_checked++;
   }
+  res.json({ success: true });
+});
 
+// Vite middleware for development
+if (process.env.NODE_ENV !== "production") {
+  const vite = await createViteServer({
+    server: { middlewareMode: true },
+    appType: "spa",
+  });
+  app.use(vite.middlewares);
+} else {
+  app.use(express.static(path.join(__dirname, "dist")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "dist", "index.html"));
+  });
+}
+
+const PORT = 3000;
+if (process.env.NODE_ENV !== "production") {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
-startServer();
+export default app;
