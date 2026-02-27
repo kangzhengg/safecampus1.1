@@ -1,0 +1,7 @@
+{
+  "name": "SafeCampus AI",
+  "description": "AI-Powered Scam Detection and Student Digital Safety Platform designed to protect university students from fraudulent opportunities.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
