@@ -1,65 +1,34 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("safecampus.db");
-
-// Initialize database
-db.exec(`
-  CREATE TABLE IF NOT EXISTS reports (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT,
-    content TEXT,
-    type TEXT,
-    risk_level TEXT,
-    reports_count INTEGER DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS stats (
-    id INTEGER PRIMARY KEY,
-    total_scans INTEGER DEFAULT 0,
-    detected INTEGER DEFAULT 0,
-    links_checked INTEGER DEFAULT 0
-  );
-
-  CREATE TABLE IF NOT EXISTS alerts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT,
-    description TEXT,
-    type TEXT,
-    date TEXT,
-    is_new BOOLEAN DEFAULT 1
-  );
-`);
-
-// Initialize stats
-db.prepare("DELETE FROM stats").run();
-db.prepare("INSERT INTO stats (id, total_scans, detected, links_checked) VALUES (1, 10, 7, 4)").run();
-
-// Seed initial reports (7 cases)
-db.prepare("DELETE FROM reports").run();
-const insertReport = db.prepare("INSERT INTO reports (title, content, type, risk_level, reports_count) VALUES (?, ?, ?, ?, ?)");
-insertReport.run("University Account Verification", "Your university email will be deactivated in 24 hours. Verify your account now at: http://uni-verify-portal.com/login", "Phishing Scam", "High Risk", 45);
-insertReport.run("Remote Data Entry - $500/Day", "Work from home! Earn $500/day doing simple data entry. No experience needed. Contact us on WhatsApp at +1-555-0199.", "Job Scam", "High Risk", 120);
-insertReport.run("Google Summer Internship 2026", "Congratulations! You have been selected for a Google Summer Internship. To confirm your spot, please pay a $50 background check fee.", "Internship Scam", "Critical", 89);
-insertReport.run("Global Merit Scholarship Award", "Dear student, you have been awarded a $5,000 scholarship! To claim your funds, please pay a $25 processing fee via Zelle.", "Scholarship Scam", "Critical", 67);
-insertReport.run("Library Access Renewal Required", "Your library access is about to expire. Please log in to the student portal to renew: http://campus-library-auth.net", "Phishing Scam", "High Risk", 34);
-insertReport.run("Part-time Virtual Assistant", "Looking for a student assistant to help with administrative tasks. $30/hour. Send a copy of your ID to start.", "Job Scam", "High Risk", 56);
-insertReport.run("Tech Startup Internship Opportunity", "Join our fast-growing AI startup as an intern. Note: You must purchase your own company-approved laptop from our vendor.", "Internship Scam", "High Risk", 23);
-
-const alertCount = db.prepare("SELECT COUNT(*) as count FROM alerts").get() as { count: number };
-if (alertCount.count === 0) {
-  const insertAlert = db.prepare("INSERT INTO alerts (title, description, type, date) VALUES (?, ?, ?, ?)");
-  insertAlert.run("New Phishing Wave Targeting .edu", "Multiple reports of fake university password reset emails. Do not click links in unexpected emails.", "Phishing", "2026-02-18");
-  insertAlert.run("Fake Internship Offers on LinkedIn", "Scammers posing as recruiters from Fortune 500 companies. Verify through official career pages.", "Job Scam", "2026-02-16");
-  insertAlert.run("Gift Card Scam Targeting Students", "Professor impersonation emails requesting gift card purchases have increased 300% this month.", "Impersonation", "2026-02-14");
-}
+// In-memory data store for Vercel compatibility
+// Note: Data will reset on server restart. For persistence on Vercel, use a cloud DB like Supabase or Vercel Postgres.
+const store = {
+  reports: [
+    { id: 1, title: "University Account Verification", content: "Your university email will be deactivated in 24 hours. Verify your account now at: http://uni-verify-portal.com/login", type: "Phishing Scam", risk_level: "High Risk", reports_count: 45, created_at: new Date().toISOString() },
+    { id: 2, title: "Remote Data Entry - $500/Day", content: "Work from home! Earn $500/day doing simple data entry. No experience needed. Contact us on WhatsApp at +1-555-0199.", type: "Job Scam", risk_level: "High Risk", reports_count: 120, created_at: new Date().toISOString() },
+    { id: 3, title: "Google Summer Internship 2026", content: "Congratulations! You have been selected for a Google Summer Internship. To confirm your spot, please pay a $50 background check fee.", type: "Internship Scam", risk_level: "Critical", reports_count: 89, created_at: new Date().toISOString() },
+    { id: 4, title: "Global Merit Scholarship Award", content: "Dear student, you have been awarded a $5,000 scholarship! To claim your funds, please pay a $25 processing fee via Zelle.", type: "Scholarship Scam", risk_level: "Critical", reports_count: 67, created_at: new Date().toISOString() },
+    { id: 5, title: "Library Access Renewal Required", content: "Your library access is about to expire. Please log in to the student portal to renew: http://campus-library-auth.net", type: "Phishing Scam", risk_level: "High Risk", reports_count: 34, created_at: new Date().toISOString() },
+    { id: 6, title: "Part-time Virtual Assistant", content: "Looking for a student assistant to help with administrative tasks. $30/hour. Send a copy of your ID to start.", type: "Job Scam", risk_level: "High Risk", reports_count: 56, created_at: new Date().toISOString() },
+    { id: 7, title: "Tech Startup Internship Opportunity", content: "Join our fast-growing AI startup as an intern. Note: You must purchase your own company-approved laptop from our vendor.", type: "Internship Scam", risk_level: "High Risk", reports_count: 23, created_at: new Date().toISOString() }
+  ],
+  stats: {
+    total_scans: 10,
+    detected: 7,
+    links_checked: 4
+  },
+  alerts: [
+    { id: 1, title: "New Phishing Wave Targeting .edu", description: "Multiple reports of fake university password reset emails. Do not click links in unexpected emails.", type: "Phishing", date: "2026-02-18", is_new: 1 },
+    { id: 2, title: "Fake Internship Offers on LinkedIn", description: "Scammers posing as recruiters from Fortune 500 companies. Verify through official career pages.", type: "Job Scam", date: "2026-02-16", is_new: 1 },
+    { id: 3, title: "Gift Card Scam Targeting Students", description: "Professor impersonation emails requesting gift card purchases have increased 300% this month.", type: "Impersonation", date: "2026-02-14", is_new: 1 }
+  ]
+};
 
 async function startServer() {
   const app = express();
@@ -69,40 +38,45 @@ async function startServer() {
 
   // API Routes
   app.get("/api/reports", (req, res) => {
-    const reports = db.prepare("SELECT * FROM reports ORDER BY created_at DESC").all();
-    res.json(reports);
+    res.json([...store.reports].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
   });
 
   app.post("/api/reports", (req, res) => {
     const { title, content, type, risk_level } = req.body;
-    const result = db.prepare("INSERT INTO reports (title, content, type, risk_level) VALUES (?, ?, ?, ?)").run(title, content, type, risk_level);
-    res.json({ id: result.lastInsertRowid });
+    const newReport = {
+      id: store.reports.length + 1,
+      title,
+      content,
+      type,
+      risk_level,
+      reports_count: 1,
+      created_at: new Date().toISOString()
+    };
+    store.reports.push(newReport);
+    res.json({ id: newReport.id });
   });
 
   app.get("/api/alerts", (req, res) => {
-    const alerts = db.prepare("SELECT * FROM alerts ORDER BY date DESC").all();
-    res.json(alerts);
+    res.json([...store.alerts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
   });
 
   app.get("/api/stats", (req, res) => {
-    const stats = db.prepare("SELECT * FROM stats WHERE id = 1").get() as { total_scans: number, detected: number, links_checked: number };
-    const reportsCount = db.prepare("SELECT COUNT(*) as count FROM reports").get() as { count: number };
     res.json({ 
-      totalScans: stats.total_scans, 
-      detected: stats.detected, 
-      linksChecked: stats.links_checked, 
-      reportsCount: reportsCount.count 
+      totalScans: store.stats.total_scans, 
+      detected: store.stats.detected, 
+      linksChecked: store.stats.links_checked, 
+      reportsCount: store.reports.length 
     });
   });
 
   app.post("/api/stats/increment", (req, res) => {
     const { type } = req.body;
     if (type === "scan") {
-      db.prepare("UPDATE stats SET total_scans = total_scans + 1 WHERE id = 1").run();
+      store.stats.total_scans++;
     } else if (type === "detected") {
-      db.prepare("UPDATE stats SET detected = detected + 1 WHERE id = 1").run();
+      store.stats.detected++;
     } else if (type === "link") {
-      db.prepare("UPDATE stats SET links_checked = links_checked + 1 WHERE id = 1").run();
+      store.stats.links_checked++;
     }
     res.json({ success: true });
   });
