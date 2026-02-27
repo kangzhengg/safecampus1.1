@@ -55,7 +55,7 @@ const BottomNav = ({ activeTab, setActiveTab }: { activeTab: string, setActiveTa
 
 // --- Screens ---
 
-const HomeScreen = ({ setActiveTab }: { setActiveTab: (tab: string) => void }) => {
+const HomeScreen = ({ setActiveTab, setScanMode }: { setActiveTab: (tab: string) => void, setScanMode: (mode: "message" | "link" | "sender") => void }) => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
 
@@ -88,7 +88,10 @@ const HomeScreen = ({ setActiveTab }: { setActiveTab: (tab: string) => void }) =
             AI-powered scam detection ready to analyze suspicious messages, links, and senders.
           </p>
           <button 
-            onClick={() => setActiveTab("scan")}
+            onClick={() => {
+              setScanMode("message");
+              setActiveTab("scan");
+            }}
             className="w-full bg-[#00D1FF] text-[#0F1117] font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-[#00B8E6] transition-colors"
           >
             <Scan size={18} />
@@ -121,13 +124,16 @@ const HomeScreen = ({ setActiveTab }: { setActiveTab: (tab: string) => void }) =
         <h2 className="text-lg font-bold text-white">Quick Actions</h2>
         <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
           {[
-            { id: "scan", label: "Analyze Text", desc: "Scan messages", icon: Scan },
+            { id: "message", label: "Analyze Text", desc: "Scan messages", icon: Scan },
             { id: "link", label: "Check Link", desc: "Verify URLs", icon: LinkIcon },
             { id: "sender", label: "Check Sender", desc: "Verify identity", icon: User },
           ].map((action, i) => (
             <button 
               key={i}
-              onClick={() => setActiveTab("scan")}
+              onClick={() => {
+                setScanMode(action.id as "message" | "link" | "sender");
+                setActiveTab("scan");
+              }}
               className="min-w-[140px] bg-gray-900 rounded-2xl p-4 border border-gray-800 text-left space-y-3"
             >
               <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center">
@@ -205,8 +211,7 @@ const HomeScreen = ({ setActiveTab }: { setActiveTab: (tab: string) => void }) =
   );
 };
 
-const ScanScreen = () => {
-  const [activeMode, setActiveMode] = useState<"message" | "link" | "sender">("message");
+const ScanScreen = ({ activeMode, setActiveMode }: { activeMode: "message" | "link" | "sender", setActiveMode: (mode: "message" | "link" | "sender") => void }) => {
   const [input, setInput] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -795,6 +800,7 @@ const LearnScreen = () => {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("home");
+  const [scanMode, setScanMode] = useState<"message" | "link" | "sender">("message");
 
   return (
     <div className="min-h-screen bg-[#0F1117] text-white font-sans selection:bg-[#00D1FF]/30">
@@ -802,12 +808,12 @@ export default function App() {
         <AnimatePresence mode="wait">
           {activeTab === "home" && (
             <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <HomeScreen setActiveTab={setActiveTab} />
+              <HomeScreen setActiveTab={setActiveTab} setScanMode={setScanMode} />
             </motion.div>
           )}
           {activeTab === "scan" && (
             <motion.div key="scan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <ScanScreen />
+              <ScanScreen activeMode={scanMode} setActiveMode={setScanMode} />
             </motion.div>
           )}
           {activeTab === "database" && (
